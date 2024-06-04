@@ -1,6 +1,6 @@
-# Voice Notes Web App Test
+# Voice Notes Web App
 
-This test aims to assess your ability to create a voice notes web application that utilizes real-time audio streaming and transcription. The task involves implementing a user-friendly interface where users can record their voice, view their live transcription, edit their transcription, and copy or clear it as needed.
+Implementation of a user-friendly interface where users can record their voice, view their live transcription, edit their transcription, and copy or clear it as needed.
 
 ![Example](example.gif)
 
@@ -8,37 +8,24 @@ This test aims to assess your ability to create a voice notes web application th
 
 ### Implementation Checklist
 
-- [ ] **Stream Audio:** Stream the recorded audio to the server for real-time transcription using WebSocket (Socket.IO) library.
-- [ ] **Live Transcription:** Implement real-time transcription of the user's voice using Deepgram Transcription API.
-- [ ] **Display Transcription:** Display the live transcription in a text area, allowing the user to see what they are saying in real-time.
-- [ ] **Edit Transcription:** Allow the user to manually edit the transcription in the text area.
-- [ ] **Copy Transcription:** Add a copy button that allows the user to easily copy the transcription to the clipboard.
-- [ ] **Clear Transcription:** Add a clear button that resets the transcription and clears the text area.
-- [ ] **Create Attractive UI:** Design and implement a visually appealing and intuitive user interface for the web app.
+- [ ] **Stream Audio:** Streams the recorded audio to the server for real-time transcription using WebSocket (Socket.IO) library.
+- [ ] **Live Transcription:** Implements real-time transcription of the user's voice using Deepgram Transcription API.
+- [ ] **Display Transcription:** Displays the live transcription in a text area, allowing the user to see what they are saying in real-time.
+- [ ] **Edit Transcription:** Allows the user to manually edit the transcription in the text area.
+- [ ] **Copy Transcription:** Adds a copy button that allows the user to easily copy the transcription to the clipboard.
+- [ ] **Clear Transcription:** Adds a clear button that resets the transcription and clears the text area.
 
 ### Transcription API Integration
 
-- The web app should integrate with Deepgram Transcription API to perform real-time transcription of the user's voice.
-- The server-side implementation should handle the communication with the transcription API, including sending the audio stream and receiving transcription events.
-- The client-side implementation should display the transcription events in real-time as they are received from the server.
+- The web app integrates with Deepgram Transcription API to perform real-time transcription of the user's voice.
+- The server-side implementation handles the communication with the transcription API, including sending the audio stream and receiving transcription events.
+- The client-side implementation displays the transcription events in real-time as they are received from the server.
 
 ### Audio Streaming with WebSocket (Socket.IO)
 
-- Use the WebSocket (Socket.IO) library to establish a real-time bidirectional communication channel between the client and the server.
-- Utilize the WebSocket connection to stream the recorded audio from the client to the server in real-time.
-- The server should receive the audio stream and forward it to the transcription API for real-time transcription.
-
-### UI Design
-
-- The UI should be designed to match the look and feel of the Speechify website.
-- Use similar colors, theming, and visual elements to create a consistent user experience.
-- Be creative in your implementation and feel free to add your own unique touch to the UI while staying true to the Speechify brand.
-- The implementation of the UI is flexible, so you have the freedom to make design decisions that enhance the user experience and functionality of the web app.
-
-### Provided Code
-
-- We provide the `useAudioRecorder` file to handle the audio recording events.
-- The `useAudioRecorder` file abstracts away the complexity of audio recording, allowing you to focus on streaming the audio and implementing the transcription features.
+- Uses the WebSocket (Socket.IO) library to establish a real-time bidirectional communication channel between the client and the server.
+- Utilizes the WebSocket connection to stream the recorded audio from the client to the server in real-time.
+- The server receives the audio stream and forward it to the transcription API for real-time transcription.
 
 ## Setup
 
@@ -58,22 +45,22 @@ This test aims to assess your ability to create a voice notes web application th
 
 ### Server-side Implementation
 
-- Implement the server-side logic to handle the WebSocket connection and audio streaming.
-- Use the Socket.IO library to establish a WebSocket connection between the client and the server.
-- Receive the audio stream from the client via the WebSocket connection and send it to the transcription API for real-time transcription.
-- Subscribe to the transcription events provided by the API and emit them to the client via the WebSocket connection.
+- Implements the server-side logic to handle the WebSocket connection and audio streaming.
+- Uses the Socket.IO library to establish a WebSocket connection between the client and the server.
+- Receives the audio stream from the client via the WebSocket connection and sends it to the transcription API for real-time transcription.
+- Subscribes to the transcription events provided by the API and emits them to the client via the WebSocket connection.
 
 ### Client-side Implementation
 
-- Utilize the provided `useAudioRecorder` file to handle audio recording events.
-- Implement the client-side logic to establish a WebSocket connection with the server using the Socket.IO library.
-- Stream the recorded audio to the server via the WebSocket connection in real-time.
-- Listen for transcription events emitted by the server:
-  - Display the interim transcription results in the text area as they are received, allowing the user to see the real-time transcription progress.
-  - When the final transcription results are received, replace the interim results in the text area with the final transcription.
-- Allow the user to manually edit the transcription in the text area.
-- Implement a copy button that allows the user to easily copy the transcription to the clipboard.
-- Add a clear button that resets the transcription and clears the text area.
+- Utilizes the provided `useAudioRecorder` file to handle audio recording events.
+- Implements the client-side logic to establish a WebSocket connection with the server using the Socket.IO library.
+- Streams the recorded audio to the server via the WebSocket connection in real-time.
+- Listens for transcription events emitted by the server:
+  - Displays the interim transcription results in the text area as they are received, allowing the user to see the real-time transcription progress.
+  - When the final transcription results are received, replaces the interim results in the text area with the final transcription.
+- Allows the user to manually edit the transcription in the text area.
+- Implements a copy button that allows the user to easily copy the transcription to the clipboard.
+- Adds a clear button that resets the transcription and clears the text area.
 
 ## Automatic Testing
 
@@ -93,25 +80,6 @@ To facilitate testing of the web app, please make sure to add the following IDs 
 
 By adding these IDs to the respective UI components, the provided test suite will be able to locate and interact with the elements correctly.
 
----
-
-## Development Guidelines
-
-### Do's
-
-- Write clean, maintainable, and well-documented code and follow the best practices and coding standards.
-- You are free to use any official documentation or language references (MDN, React Docs, Socket.IO Docs, etc).
-- You can use the debugging tools and native IDE features (only standard Auto-Completion).
-- Implement robust error handling and graceful error recovery mechanisms throughout the application to ensure a smooth user experience and maintain the stability of the web app.
-
-### Don'ts
-
-- Do NOT use any external libraries for the implementation, except for any previously mentioned or already installed sdks.
-- DO NOT include any API keys or sensitive information in the client-side code.
-- DO NOT use any Coding Assistants like GitHub Copilot, ChatGPT, etc., or any other AI-based tools.
-- DO NOT visit direct blogs or articles related to the implementation of the tasks.
-- DO NOT use Stack Overflow or any other forum websites.
-- DO NOT submit your Deepgram key in your final solution (keep in .env file). We will use our own when auto-grading.
 
 ## Resources
 
