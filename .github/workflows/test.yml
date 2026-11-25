@@ -32,8 +32,6 @@ jobs:
         continue-on-error: true
 
       - name: Run Server Tests
-        env:
-          DEEPGRAM_API_KEY: a75c0f16fdd5ec54783da0ff40d3de5ad5491f42 # tmp not connected to paid account ${{ secrets.DEEPGRAM_API_KEY }}
         run: npm run test:server
         continue-on-error: true
 
