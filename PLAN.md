@@ -25,7 +25,7 @@
 
 - [x] 0.1 🧑 MANUAL: revoke the leaked Deepgram key (do this before anything else)
 - [x] 0.2 Remove the key from the workflow and check the baseline
-- [ ] 1.1 Remove the take-home scaffolding and third-party branding
+- [x] 1.1 Remove the take-home scaffolding and third-party branding
 - [ ] 1.2 Tooling: root scripts, ESLint for both packages, `.env.example`
 - [ ] 2.1 Restructure the server for testability (`createServer` with injectable dependencies)
 - [ ] 2.2 Server tests with Vitest and a fake transcriber
@@ -354,3 +354,4 @@ _Add an entry whenever reality differs from this plan: date, step, what changed,
 
 - **2026-11-25 · 0.1:** The owner deleted the leaked key in the Deepgram console and saved a new key only in the git-ignored `server/.env` of a local clone. Claude checked that the variable is set (40 characters) without printing it.
 - **2026-11-25 · 0.2 baseline:** Client tests 12/15 pass, matching V3. The old server suite was not re-run, because 4 of its tests call the real Deepgram API. Live transcription **works today** on the server → Deepgram path: running the current server with the new key and streaming `server/tests/sample.wav` (8 kHz, first 20 s, at real-time pace in 100 ms chunks, starting after `transcriber-ready`) gave 12 partials and 5 accurate finals. The browser microphone path was **not** checked, because Claude has no microphone; the owner can check it with `npm run dev` in both packages. Local checks ran on Node 22, so CI pins Node 20 from 6.1.
+- **2026-11-25 · 1.1:** `client/public/favicon.ico` was the third-party company's logo, so it was deleted and replaced by an original microphone icon (`client/public/favicon.svg`). Also removed: the unused client devDependencies `socket.io` and `ws` (only the deleted supplied tests used them), the Jest/Babel configs (`server/jest.config.cjs`, `server/babel.config.cjs`), the `<!-- DONT MODIFY -->` banner in `index.html`, the GitHub Actions/JUnit reporter config in `vite.config.js`, and the `testIdAttribute: "id"` override in `client/tests/setup.js` (new tests use `data-testid`). `ws` was added as an explicit server dependency, because the transcriber imports it and it had only been available transitively through `@deepgram/sdk`. Until 1.2, the server's `test` script just prints a placeholder (Jest is gone). The "Done when" grep still matches PLAN.md itself, which quotes the grep and names the repo; no other file matches.

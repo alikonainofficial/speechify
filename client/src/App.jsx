@@ -2,12 +2,6 @@ import { useEffect, useState } from "react";
 import useAudioRecorder from "./useAudioRecorder";
 import useSocket from "./useSocket";
 
-// IMPORTANT: To ensure proper functionality and microphone access, please follow these steps:
-// 1. Access the site using 'localhost' instead of the local IP address.
-// 2. When prompted, grant microphone permissions to the site to enable audio recording.
-// Failure to do so may result in issues with audio capture and transcription.
-// NOTE: Don't use createPortal()
-
 function App() {
 
   const textAreaStyle = {
@@ -26,7 +20,6 @@ function App() {
   });
 
   useEffect(() => {
-    // Note: must connect to server on page load but don't start transcriber
     initialize();
     if(socket){
       socket.on("transcriber-ready", () => {
@@ -83,10 +76,8 @@ function App() {
     setPartialTranscription("");
   }
 
-  // ... add more functions
   return (
     <div>
-      {/* <h1>Speechify Voice Notes</h1> */}
       <p>Record or type something in the textbox.</p>
       <textarea
         style={textAreaStyle}

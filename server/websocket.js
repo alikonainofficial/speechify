@@ -20,7 +20,6 @@ const initializeWebSocket = (io) => {
   io.on("connection", (socket) => {
     console.log(`connection made (${socket.id})`);
 
-    // ... add needed event handlers and logic
     let transcriber = null;
 
     socket.on("configure-stream", ({sampleRate}) => {

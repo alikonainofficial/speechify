@@ -5,9 +5,7 @@ const serverURL = "http://localhost:8080";
 
 const subscriptions = ["final", "partial", "transcriber-ready", "error"];
 
-// feel free to pass in any props
 const useSocket = () => {
-  // ... free to add any state or variables
   const [socket, setSocket] = useState(null);
   const isInitialized = useRef(false);
   
@@ -45,7 +43,6 @@ const useSocket = () => {
     };
   }, [socket]);
 
-  // ... free to add more functions
   return { socket, initialize, disconnect };
 };
 

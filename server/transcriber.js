@@ -1,5 +1,4 @@
 import EventEmitter from "events";
-import { createClient } from "@deepgram/sdk";
 import dotenv from 'dotenv';
 import WebSocket from 'ws';
 
@@ -11,7 +10,6 @@ class Transcriber extends EventEmitter {
   constructor(sampleRate) {
     super();
     this.sampleRate = sampleRate;
-    this.deepgram = createClient(DEEPGRAM_API_KEY);
     this.connection = null;
     this.ready = false;
     this.startTranscriptionStream(this.sampleRate);
@@ -103,7 +101,6 @@ class Transcriber extends EventEmitter {
     }
   }
 
-  // ... feel free to add more functions
 }
 
 export default Transcriber;
