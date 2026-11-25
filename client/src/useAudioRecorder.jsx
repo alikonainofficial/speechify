@@ -99,13 +99,15 @@ const useAudioRecorder = ({ dataCb }) => {
       _stopTimer();
       mediaRecorder?.pause();
     }
-  }, [mediaRecorder, setIsPaused, _startTimer, _stopTimer]);
+  }, [isPaused, mediaRecorder, setIsPaused, _startTimer, _stopTimer]);
 
   return {
     startRecording,
     stopRecording,
     togglePauseResume,
     isRecording,
+    isPaused,
+    recordingTime,
   };
 };
 

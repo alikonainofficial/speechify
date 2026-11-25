@@ -1,8 +1,11 @@
 {
+  "name": "voice-notes",
+  "private": true,
   "type": "module",
   "scripts": {
-    "test": "npm run test:server && npm run test:client",
-    "test:server": "cd server && npm test",
-    "test:client": "cd client && npm test"
+    "lint": "npm --prefix client run lint && npm --prefix server run lint",
+    "test": "npm --prefix server test && npm --prefix client test",
+    "build": "npm --prefix client run build",
+    "dev": "npm --prefix server run dev & npm --prefix client run dev"
   }
 }

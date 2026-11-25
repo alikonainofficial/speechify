@@ -17,4 +17,17 @@ module.exports = {
       { allowConstantExport: true },
     ],
   },
+  overrides: [
+    {
+      // Tooling files run in Node, not the browser.
+      files: ['vite.config.js', 'postcss.config.js', 'tailwind.config.js'],
+      env: { node: true },
+    },
+    {
+      // Vitest globals (describe, it, expect, vi) are enabled in vite.config.js.
+      files: ['tests/**', 'src/**/*.test.{js,jsx}'],
+      env: { node: true },
+      globals: { describe: 'readonly', it: 'readonly', test: 'readonly', expect: 'readonly', vi: 'readonly', beforeEach: 'readonly', afterEach: 'readonly', beforeAll: 'readonly', afterAll: 'readonly' },
+    },
+  ],
 }
