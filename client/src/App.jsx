@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import useAudioRecorder from "./useAudioRecorder";
+import { useRecorder } from "./audio/useRecorder";
 import useSocket from "./useSocket";
 
 function App() {
@@ -11,10 +11,10 @@ function App() {
   const { socket, initialize } = useSocket();
   const [transcription, setTranscription] = useState("");
   const [partialTranscription, setPartialTranscription] = useState("");
-  const { startRecording, stopRecording, isRecording } = useAudioRecorder({
-    dataCb: (data) => {
+  const { start: startRecording, stop: stopRecording, isRecording, error: recorderError } = useRecorder({
+    onChunk: (chunk) => {
       if(socket) {
-        socket.emit("incoming-audio", data);
+        socket.emit("incoming-audio", chunk);
       }
     },
   });
@@ -53,7 +53,7 @@ function App() {
   const onStartRecordingPress = async () => {
     // start recorder and transcriber (send configure-stream)
     const sampleRate = await startRecording();
-    if(socket){
+    if(sampleRate && socket){
       socket.emit("configure-stream", {sampleRate});
     }
   };
@@ -79,6 +79,7 @@ function App() {
   return (
     <div>
       <p>Record or type something in the textbox.</p>
+      {recorderError && <p role="alert">{recorderError.message}</p>}
       <textarea
         style={textAreaStyle}
         id="transcription-display"
