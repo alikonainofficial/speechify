@@ -5,6 +5,7 @@ import path from "path";
 import { Server } from "socket.io";
 import { handleConnection } from "./socket/session.js";
 import { createStreamLimits, getClientIp } from "./limits.js";
+import { createApiRouter } from "./enhance/routes.js";
 
 /**
  * Builds the HTTP and Socket.IO server without listening on a port.
@@ -13,9 +14,10 @@ import { createStreamLimits, getClientIp } from "./limits.js";
  * @param {object} deps
  * @param {object} deps.config              frozen config from loadConfig()
  * @param {Function} deps.createTranscriber ({ sampleRate }) => transcriber (an EventEmitter)
- * @param {Function} [deps.now]             clock in ms, for the daily budget (tests pass a fake)
+ * @param {object|null} [deps.enhancer]     AI clean-up service ({ enhance(text) }), or null to disable AI
+ * @param {Function} [deps.now]             clock in ms, for limits (tests pass a fake)
  */
-export function createServer({ config, createTranscriber, now = Date.now }) {
+export function createServer({ config, createTranscriber, enhancer = null, now = Date.now }) {
   const isAllowedOrigin = (origin) => config.allowedOrigins.includes(origin);
 
   const app = express();
@@ -49,7 +51,8 @@ export function createServer({ config, createTranscriber, now = Date.now }) {
   );
 
   app.use(cors({ origin: config.allowedOrigins }));
-  app.use(express.json());
+  app.use(express.json({ limit: "64kb" }));
+  app.use("/api", createApiRouter({ config, enhancer, now }));
 
   const staticPath = path.resolve("public/");
   app.use(express.static(staticPath));
@@ -59,6 +62,13 @@ export function createServer({ config, createTranscriber, now = Date.now }) {
       return next();
     }
     res.sendFile(path.join(staticPath, "index.html"));
+  });
+
+  // Malformed JSON bodies and other request errors: answer in JSON, never with a stack trace.
+  // eslint-disable-next-line no-unused-vars -- Express needs all four arguments to treat this as an error handler
+  app.use((error, req, res, next) => {
+    const status = error.status ?? 500;
+    res.status(status).json({ error: { code: status === 500 ? "SERVER_ERROR" : "BAD_REQUEST", message: "The request couldn't be processed." } });
   });
 
   return { app, httpServer, io };

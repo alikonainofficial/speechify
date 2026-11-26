@@ -27,6 +27,8 @@ export function loadConfig(env = process.env) {
     nodeEnv: env.NODE_ENV || "development",
     port: readNumber(env, "PORT", 8080, { integer: true }),
     deepgramApiKey: env.DEEPGRAM_API_KEY || "",
+    geminiApiKey: env.GEMINI_API_KEY || "",
+    geminiModel: env.GEMINI_MODEL || "gemini-3.5-flash-lite",
 
     // Browser origins allowed to use the API and open sockets.
     allowedOrigins: Object.freeze(readList(env, "ALLOWED_ORIGINS", ["http://localhost:5173"])),
@@ -38,5 +40,6 @@ export function loadConfig(env = process.env) {
     maxConcurrentStreams: readNumber(env, "MAX_CONCURRENT_STREAMS", 3, { min: 1, integer: true }),
     dailySecondsPerIp: readNumber(env, "DAILY_SECONDS_PER_IP", 600, { min: 0 }),
     maxMessageBytes: 64 * 1024,
+    enhancePerHour: readNumber(env, "ENHANCE_PER_HOUR", 10, { min: 1, integer: true }),
   });
 }

@@ -74,3 +74,25 @@ export const LIMIT_MESSAGES = {
   BUSY: "The demo is busy right now. Please try again in a minute.",
   DAILY_LIMIT: "You've used today's free transcription time. Please come back tomorrow.",
 };
+
+/**
+ * A sliding-window limiter: at most `limit` uses per key within `windowMs`.
+ * tryUse(key) records a use and returns true, or returns false if the key is over the limit.
+ */
+export function createRateLimiter({ limit, windowMs, now }) {
+  const usesByKey = new Map();
+
+  return {
+    tryUse(key) {
+      const cutoff = now() - windowMs;
+      const recent = (usesByKey.get(key) ?? []).filter((time) => time > cutoff);
+      if (recent.length >= limit) {
+        usesByKey.set(key, recent);
+        return false;
+      }
+      recent.push(now());
+      usesByKey.set(key, recent);
+      return true;
+    },
+  };
+}
