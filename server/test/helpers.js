@@ -10,7 +10,7 @@ import { createFakeTranscriberFactory } from "./fakes/fake-transcriber.js";
 export async function startTestServer({ env = {}, ...overrides } = {}) {
   const fakes = createFakeTranscriberFactory();
   const config = loadConfig({ PORT: "0", ...env });
-  const { httpServer, io } = createServer({
+  const { httpServer, io, shutdown } = createServer({
     config,
     createTranscriber: fakes.create,
     ...overrides,
@@ -42,7 +42,7 @@ export async function startTestServer({ env = {}, ...overrides } = {}) {
     await new Promise((resolve) => io.close(() => resolve()));
   }
 
-  return { client, connect, fakes, url, config, cleanup };
+  return { client, connect, fakes, url, config, cleanup, shutdown };
 }
 
 // Resolves with the first payload of `event`, or rejects after `ms`.

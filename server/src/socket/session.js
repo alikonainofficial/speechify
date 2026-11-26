@@ -11,7 +11,7 @@
  * - transcriber-ready                 The stream is open; audio sent earlier is not lost.
  * - partial (string)                  Interim text for the current phrase.
  * - final (string)                    Final text for a phrase.
- * - stream-ended { reason }           The stream is over: "stopped" | "time-limit" | "closed".
+ * - stream-ended { reason }           The stream is over: "stopped" | "time-limit" | "closed" | "server-shutdown".
  * - stream-error { code, message }    Codes: INVALID_CONFIG, BUSY, DAILY_LIMIT, TRANSCRIBER_ERROR.
  *
  * Limits (see limits.js): a stream is auto-stopped after config.maxSessionSeconds,
@@ -30,7 +30,7 @@ function readSampleRate(payload) {
   return sampleRate;
 }
 
-export function handleConnection(socket, { createTranscriber, config, limits, clientIp }) {
+export function handleConnection(socket, { createTranscriber, config, limits, clientIp, shutdownHooks }) {
   // The active stream, or null. `stopping` is true between stop-stream and stream-ended.
   let active = null;
 
@@ -113,7 +113,12 @@ export function handleConnection(socket, { createTranscriber, config, limits, cl
     if (active) stop(active, "stopped");
   });
 
+  // On server shutdown: finish the active stream so the user keeps their last words.
+  const finishForShutdown = () => (active ? stop(active, "server-shutdown") : Promise.resolve());
+  shutdownHooks?.add(finishForShutdown);
+
   socket.on("disconnect", () => {
+    shutdownHooks?.delete(finishForShutdown);
     if (!active) return;
     const stream = active;
     detach(stream);

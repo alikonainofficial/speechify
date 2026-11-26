@@ -22,9 +22,20 @@ function readList(env, name, fallback) {
     .filter(Boolean);
 }
 
+// In production, refuse to start without the settings a public deploy can't run safely without.
+function checkProduction(env) {
+  const missing = ["DEEPGRAM_API_KEY", "ALLOWED_ORIGINS"].filter((name) => !env[name]?.trim());
+  if (missing.length > 0) {
+    throw new Error(`Missing required settings for production: ${missing.join(", ")}. Set them in the hosting dashboard.`);
+  }
+}
+
 export function loadConfig(env = process.env) {
+  const nodeEnv = env.NODE_ENV || "development";
+  if (nodeEnv === "production") checkProduction(env);
+
   return Object.freeze({
-    nodeEnv: env.NODE_ENV || "development",
+    nodeEnv,
     port: readNumber(env, "PORT", 8080, { integer: true }),
     deepgramApiKey: env.DEEPGRAM_API_KEY || "",
     geminiApiKey: env.GEMINI_API_KEY || "",

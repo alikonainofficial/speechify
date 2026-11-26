@@ -41,7 +41,7 @@
 - [x] 5.1 Server: `POST /api/notes/enhance` with Gemini
 - [x] 5.2 Client: "Enhance with AI" on a note
 - [x] 6.1 CI that can fail (replaces the old workflow)
-- [ ] 7.1 Production server: `/health`, config, Render blueprint
+- [x] 7.1 Production server: `/health`, config, Render blueprint
 - [ ] 7.2 Client deploy to GitHub Pages and wake-up UX
 - [ ] 7.3 🧑 MANUAL: create accounts, deploy, verify
 - [ ] 8.1 README, LICENSE and demo GIF placeholder
@@ -376,4 +376,10 @@ _Add an entry whenever reality differs from this plan: date, step, what changed,
   - **Not yet checked against real Gemini.** That happens in 7.3, once the owner has a key.
 - **2026-11-26 · 5.2:** `note.ai` also stores `originalTitle` and `originalText` (from when Enhance was clicked); that is what makes "Use AI title" and "Replace text…" undoable via "Restore original…" buttons. Original and cleaned text are compared with a two-button toggle (works on mobile) rather than side by side. `/api/config` also drives the recorder's time limit (`maxSessionSeconds`), so the ring matches the server. The server URL moved to `src/net/serverUrl.js`, shared by the socket and the new `src/net/api.js`. `NoteView` syncs its title and text inputs when the AI panel changes the note. Checked in headless Chrome with a fake enhancer: loading state, result, apply, undo, and persistence across reload, with no console errors.
 - **2026-11-26 · 6.1:** Uses `actions/checkout@v7` and `actions/setup-node@v7`, the current majors per their release pages (Nov 2026), with no breaking changes relevant here. Node comes from `.nvmrc` (20), with an npm cache per lockfile. It's one job with a `client`/`server` matrix and `fail-fast: false`, so one package failing doesn't hide the other's result. The token is read-only (`permissions: contents: read`). The old `mikepenz/action-junit-report` step went with the old workflow. Also removed: the client's pinned `@rollup/rollup-linux-x64-gnu@4.9.5` optional dependency, a take-home workaround that npm no longer needs. Red check: right after this commit, a deliberately failing test is pushed and then reverted; see the next two commits and the run log in the 7.1 entry. **Note for the owner:** Node 20 reached end-of-life in April 2026. The plan pins it (rule 7), so it stays; moving `.nvmrc` to 22 or 24 later is a one-line change.
+- **2026-11-26 · 6.1 red check (result):** run 45778083144 green → run 45778191584 **red** (deliberately failing server test, commit `4e1c7b6`) → run 45778332545 green after the revert (`72a5798`).
+- **2026-11-26 · 7.1:**
+  - **Blueprint** (checked against Render's current spec): `runtime: node` (`env` is deprecated) and `autoDeployTrigger: checksPass` (replaces `autoDeploy`), so Render deploys only after CI passes. `branch: main`. `NODE_VERSION=20` is set in the blueprint, because Render reads `.nvmrc` only at the repo root, and its default is Node 24.
+  - **Health:** `/health` uptime comes from the injected clock.
+  - **Unknown paths** now get a JSON 404, replacing the static/SPA fallback.
+  - **Shutdown:** `createServer` returns `shutdown({ timeoutMs })`. It refuses new sockets, calls `finish()` on active streams (clients get `stream-ended { reason: "server-shutdown" }`, and the client saves the note as usual), waits at most 5 s, then closes Socket.IO and HTTP. `index.js` wires it to SIGTERM and SIGINT and exits with code 1 and a clear message when production settings are missing. Checked by hand: a missing-settings start exits 1, and SIGTERM exits cleanly in about 1.5 s.
 

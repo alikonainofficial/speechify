@@ -1,0 +1,41 @@
+# Render Blueprint for the Voice Notes server (free web service).
+# Spec: https://render.com/docs/blueprint-spec
+# Secrets are marked `sync: false`: Render asks for them once, in the dashboard, when the
+# Blueprint is first created. They are never stored in this file.
+services:
+  - type: web
+    name: voice-notes-server
+    runtime: node
+    plan: free
+    rootDir: server
+    branch: main
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /health
+    # Deploy only after the commit's GitHub checks (CI) pass.
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Render reads .nvmrc only from the repo root; pin it here so it can't drift.
+      - key: NODE_VERSION
+        value: "20"
+      # Render's proxy sets X-Forwarded-For; trust it for per-IP limits.
+      - key: TRUST_PROXY
+        value: "1"
+      - key: MAX_SESSION_SECONDS
+        value: "60"
+      - key: MAX_CONCURRENT_STREAMS
+        value: "3"
+      - key: DAILY_SECONDS_PER_IP
+        value: "600"
+      - key: ENHANCE_PER_HOUR
+        value: "10"
+      - key: GEMINI_MODEL
+        value: gemini-3.5-flash-lite
+      - key: DEEPGRAM_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
