@@ -2,11 +2,11 @@
   "name": "voice-notes-server",
   "version": "1.0.0",
   "description": "Express and Socket.IO server that streams microphone audio to Deepgram for live transcription",
-  "main": "server.js",
+  "main": "src/index.js",
   "type": "module",
   "scripts": {
-    "dev": "nodemon server.js",
-    "start": "node server.js",
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
     "test": "vitest run --passWithNoTests",
     "lint": "eslint . --ext js --max-warnings 0"
   },
@@ -23,7 +23,6 @@
   },
   "devDependencies": {
     "eslint": "^8.57.1",
-    "nodemon": "^3.1.0",
     "vitest": "^1.6.1"
   }
 }
