@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main, improvement-plan]
+  pull_request:
+
+# Read-only token: this workflow only checks out code. No secrets are used, and no
+# test talks to Deepgram or Gemini (the tests use fakes).
+permissions:
+  contents: read
+
+# A newer push to the same branch cancels the older run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: ${{ matrix.package }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [client, server]
+    defaults:
+      run:
+        working-directory: ${{ matrix.package }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: ${{ matrix.package }}/package-lock.json
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - name: Build
+        if: matrix.package == 'client'
+        run: npm run build

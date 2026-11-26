@@ -2,32 +2,21 @@
 
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import path from "path";
-import GithubActionsReporter from "vitest-github-actions-reporter";
+import { fileURLToPath } from "node:url";
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  // GitHub Pages serves the app from /<repo-name>/; the deploy workflow sets VITE_BASE.
+  base: process.env.VITE_BASE || "/",
   plugins: [react()],
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
   },
   test: {
     environment: "jsdom",
     globals: true,
     setupFiles: "./tests/setup.js",
-    outputFile: {
-      junit: "frontend-test-results.xml",
-    },
-    reporters: process.env.GITHUB_ACTIONS
-      ? [
-          "junit",
-          new GithubActionsReporter({
-            hideStackTrace: true,
-            trimRepositoryPrefix: true,
-          }),
-        ]
-      : "default",
   },
 });

@@ -1,0 +1,63 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time; let a running deploy finish instead of cancelling it half-way.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: Check that the server URL is configured
+        env:
+          VITE_SERVER_URL: ${{ vars.VITE_SERVER_URL }}
+        run: |
+          if [ -z "$VITE_SERVER_URL" ]; then
+            echo "::error::Set the repository variable VITE_SERVER_URL (Settings → Secrets and variables → Actions → Variables) to the Render server URL."
+            exit 1
+          fi
+
+      - run: npm ci
+
+      - name: Build
+        env:
+          VITE_SERVER_URL: ${{ vars.VITE_SERVER_URL }}
+          # The repository name, so the base path keeps working if the repo is renamed.
+          VITE_BASE: /${{ github.event.repository.name }}/
+        run: npm run build
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: client/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
