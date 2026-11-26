@@ -28,7 +28,7 @@
 - [x] 1.1 Remove the take-home scaffolding and third-party branding
 - [x] 1.2 Tooling: root scripts, ESLint for both packages, `.env.example`
 - [x] 2.1 Restructure the server for testability (`createServer` with injectable dependencies)
-- [ ] 2.2 Server tests with Vitest and a fake transcriber
+- [x] 2.2 Server tests with Vitest and a fake transcriber
 - [ ] 2.3 Deepgram transcriber: buffering, KeepAlive, graceful CloseStream, nova-3
 - [ ] 2.4 Socket session lifecycle: validation, re-configure, errors, cleanup
 - [ ] 2.5 Abuse limits for a public demo
