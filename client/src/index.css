@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Palette as RGB triplets so Tailwind can add opacity. Contrast pairs are WCAG AA. */
+:root {
+  color-scheme: light dark;
+  --paper: 246 248 249;      /* #F6F8F9 page */
+  --surface: 255 255 255;    /* panels */
+  --ink: 24 34 45;           /* #18222D text */
+  --muted: 86 98 111;        /* #56626F secondary text */
+  --line: 216 222 228;       /* #D8DEE4 borders */
+  --accent: 15 118 110;      /* #0F766E teal */
+  --accent-ink: 255 255 255;
+  --rec: 180 35 24;          /* #B42318 recording red */
+  --rec-ink: 255 255 255;
+  --danger: 180 35 24;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: 14 21 28;       /* #0E151C */
+    --surface: 21 30 39;     /* #151E27 */
+    --ink: 228 234 240;      /* #E4EAF0 */
+    --muted: 152 165 178;    /* #98A5B2 */
+    --line: 45 58 71;        /* #2D3A47 */
+    --accent: 45 212 191;    /* #2DD4BF */
+    --accent-ink: 6 40 37;
+    --rec: 248 113 113;      /* #F87171 */
+    --rec-ink: 45 10 10;
+    --danger: 252 165 165;
+  }
+}
+
+@layer base {
+  html {
+    @apply bg-paper text-ink antialiased;
+  }
+  :focus-visible {
+    @apply outline outline-2 outline-offset-2 outline-accent;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+    }
+  }
+}

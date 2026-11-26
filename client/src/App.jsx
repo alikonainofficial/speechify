@@ -1,68 +1,110 @@
-import { useReducer, useState } from "react";
-import { useRecorder } from "./audio/useRecorder";
-import { useTranscriptionSocket } from "./net/useTranscriptionSocket";
-import { initialTranscript, transcriptReducer } from "./transcript/transcriptReducer";
-import LiveTranscript from "./transcript/LiveTranscript";
+import { useEffect, useState } from "react";
+import NotesList from "./components/NotesList";
+import NoteView from "./components/NoteView";
+import Recorder from "./components/Recorder";
+import { useNotes } from "./notes/useNotes";
+import { useRecordingSession } from "./recording/useRecordingSession";
 
-// Temporary UI: replaced by the recorder and notes UI in step 4.3.
+// Space toggles recording, except while typing or when a control already handles the key.
+function isTypingTarget(target) {
+  if (!(target instanceof HTMLElement)) return false;
+  return target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT", "BUTTON", "A"].includes(target.tagName);
+}
+
 function App() {
-  const [transcript, dispatch] = useReducer(transcriptReducer, initialTranscript);
-  const [streamError, setStreamError] = useState(null);
+  const notes = useNotes();
+  const [selectedId, setSelectedId] = useState(null);
+  const [query, setQuery] = useState("");
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const { status, startStream, sendAudio, stopStream } = useTranscriptionSocket({
-    onPartial: (text) => dispatch({ type: "PARTIAL", text }),
-    onFinal: (text) => dispatch({ type: "FINAL", text }),
-    onEnded: () => stopRecording(),
-    onError: (error) => setStreamError(error.message),
+  const session = useRecordingSession({
+    onComplete: ({ text, durationSec }) => {
+      const note = notes.create({ text, durationSec });
+      if (note) setSelectedId(note.id);
+    },
   });
 
-  const { start: startRecording, stop: stopRecording, isRecording, error: recorderError } = useRecorder({
-    onChunk: sendAudio,
-  });
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      if (event.code !== "Space" || event.repeat || isTypingTarget(event.target)) return;
+      event.preventDefault();
+      session.toggle();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [session]);
 
-  const onStartRecordingPress = async () => {
-    setStreamError(null);
-    const sampleRate = await startRecording();
-    if (sampleRate) startStream(sampleRate);
+  const selectNote = (id) => {
+    setSelectedId(id);
+    setDrawerOpen(false);
   };
 
-  const onStopRecordingPress = () => {
-    stopRecording();
-    stopStream();
-  };
-
-  const onCopyTranscription = () => {
-    navigator.clipboard.writeText(transcript.committed);
-  };
-
-  const onClearTranscription = () => {
-    dispatch({ type: "CLEAR" });
-  };
+  const selected = notes.notes.find((note) => note.id === selectedId) ?? null;
+  const recording = session.phase !== "idle";
+  const problems = [session.error, notes.error].filter(Boolean);
 
   return (
-    <div>
-      <p>Server: {status}</p>
-      {recorderError && <p role="alert">{recorderError.message}</p>}
-      {streamError && <p role="alert">{streamError}</p>}
-      {isRecording ? (
-        <LiveTranscript committed={transcript.committed} partial={transcript.partial} />
-      ) : (
-        <textarea
-          style={{ display: "block" }}
-          value={transcript.committed}
-          onChange={(e) => dispatch({ type: "EDIT", text: e.target.value })}
-          rows="10"
-          cols="50"
-        />
-      )}
-      <button onClick={onStartRecordingPress} disabled={isRecording || status !== "connected"}>
-        Start Recording
-      </button>
-      <button onClick={onStopRecordingPress} disabled={!isRecording}>
-        Stop Recording
-      </button>
-      <button onClick={onCopyTranscription}>Copy</button>
-      <button onClick={onClearTranscription}>Clear</button>
+    <div className="min-h-screen md:grid md:grid-cols-[18rem_1fr]">
+      <aside className="border-b border-line bg-surface md:sticky md:top-0 md:h-screen md:border-b-0 md:border-r">
+        <div className="flex items-center justify-between gap-3 px-4 py-4">
+          <h1 className="flex items-center gap-2 text-lg font-semibold">
+            <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" className="h-6 w-6" />
+            Voice Notes
+          </h1>
+          <button
+            type="button"
+            className="rounded-lg border border-line px-3 py-1.5 text-sm font-medium md:hidden"
+            aria-expanded={drawerOpen}
+            aria-controls="notes-panel"
+            onClick={() => setDrawerOpen((open) => !open)}
+          >
+            {drawerOpen ? "Close" : `Notes (${notes.notes.length})`}
+          </button>
+        </div>
+        <div
+          id="notes-panel"
+          className={`${drawerOpen ? "flex" : "hidden"} max-h-[70vh] flex-col px-4 pb-4 md:flex md:max-h-[calc(100vh-4.5rem)]`}
+        >
+          <NotesList
+            notes={notes.notes}
+            query={query}
+            onQueryChange={setQuery}
+            selectedId={selectedId}
+            onSelect={selectNote}
+          />
+        </div>
+      </aside>
+
+      <main className="flex flex-col gap-8 px-5 py-8 md:px-12 md:py-12">
+        <Recorder session={session} showTranscript={recording} />
+
+        {problems.map((message) => (
+          <p key={message} role="alert" className="max-w-prose rounded-lg border border-danger/40 px-4 py-3 text-danger">
+            {message}
+          </p>
+        ))}
+        {session.notice && !recording && (
+          <p role="status" className="max-w-prose text-muted">
+            {session.notice}
+          </p>
+        )}
+
+        {!recording && selected && (
+          <NoteView
+            key={selected.id}
+            note={selected}
+            onUpdate={notes.update}
+            onDelete={(id) => {
+              notes.remove(id);
+              setSelectedId(null);
+            }}
+            exportMarkdown={notes.exportMarkdown}
+          />
+        )}
+        {!recording && !selected && notes.notes.length > 0 && (
+          <p className="max-w-prose text-muted">Pick a note from the list, or record a new one.</p>
+        )}
+      </main>
     </div>
   );
 }
