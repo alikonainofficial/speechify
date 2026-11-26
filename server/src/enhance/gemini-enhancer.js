@@ -45,12 +45,17 @@ Return JSON with:
 
 export class EnhanceError extends Error {
   // code: "QUOTA" (Gemini rate limit), "TIMEOUT", "INVALID_OUTPUT", "UPSTREAM"
-  constructor(code, message) {
+  // detail: a short reason for the server log only (never the transcript or the key).
+  constructor(code, message, detail = "") {
     super(message);
     this.name = "EnhanceError";
     this.code = code;
+    this.detail = detail;
   }
 }
+
+// Worth one more try: Gemini hiccups (5xx, network) and an occasional off-format answer.
+const RETRYABLE = new Set(["UPSTREAM", "INVALID_OUTPUT"]);
 
 // Wraps the transcript so it can't close the delimiter early.
 export function buildPrompt(text) {
@@ -59,52 +64,82 @@ export function buildPrompt(text) {
 }
 
 function toEnhanceError(error) {
+  const detail = `Gemini ${error?.status ? `HTTP ${error.status}` : error?.name ?? "error"}: ${String(error?.message ?? "").slice(0, 160)}`;
   if (error?.name === "TimeoutError" || error?.name === "AbortError") {
-    return new EnhanceError("TIMEOUT", "The AI service took too long to answer.");
+    return new EnhanceError("TIMEOUT", "The AI service took too long to answer.", detail);
   }
   if (error?.status === 429) {
-    return new EnhanceError("QUOTA", "The AI service's rate limit was reached.");
+    return new EnhanceError("QUOTA", "The AI service's rate limit was reached.", detail);
   }
-  return new EnhanceError("UPSTREAM", "The AI service returned an error.");
+  return new EnhanceError("UPSTREAM", "The AI service returned an error.", detail);
 }
 
 /**
  * Creates the AI clean-up service.
  * enhance(text) → { title, summary, tags, cleanedText, model }, or throws EnhanceError.
+ *
+ * A transient failure (Gemini error or an off-format answer) is retried once. Both attempts
+ * share one `timeoutMs` deadline. Each failed attempt is logged with its reason via `log`.
  * `client` can be replaced in tests with an object that has models.generateContent().
  */
-export function createGeminiEnhancer({ apiKey, model, client = new GoogleGenAI({ apiKey }), timeoutMs = 15000 }) {
+export function createGeminiEnhancer({
+  apiKey,
+  model,
+  client = new GoogleGenAI({ apiKey }),
+  timeoutMs = 15000,
+  log = (message) => console.warn(message),
+}) {
+  async function attempt(text, signal) {
+    let response;
+    try {
+      response = await client.models.generateContent({
+        model,
+        contents: buildPrompt(text),
+        config: {
+          systemInstruction: INSTRUCTIONS,
+          responseMimeType: "application/json",
+          responseJsonSchema: RESPONSE_JSON_SCHEMA,
+          abortSignal: signal,
+        },
+      });
+    } catch (error) {
+      throw toEnhanceError(error);
+    }
+
+    let data;
+    try {
+      data = JSON.parse(response.text);
+    } catch {
+      throw new EnhanceError("INVALID_OUTPUT", "The AI service returned something that isn't JSON.", "answer was not JSON");
+    }
+
+    const parsed = enhancementSchema.safeParse(data);
+    if (!parsed.success) {
+      const fields = parsed.error.issues.map((issue) => `${issue.path.join(".") || "(root)"}: ${issue.message}`);
+      throw new EnhanceError(
+        "INVALID_OUTPUT",
+        "The AI service's answer didn't match the expected format.",
+        `schema mismatch: ${fields.join("; ").slice(0, 200)}`,
+      );
+    }
+    return { ...parsed.data, model };
+  }
+
   return {
     model,
     async enhance(text) {
-      let response;
-      try {
-        response = await client.models.generateContent({
-          model,
-          contents: buildPrompt(text),
-          config: {
-            systemInstruction: INSTRUCTIONS,
-            responseMimeType: "application/json",
-            responseJsonSchema: RESPONSE_JSON_SCHEMA,
-            abortSignal: AbortSignal.timeout(timeoutMs),
-          },
-        });
-      } catch (error) {
-        throw toEnhanceError(error);
+      const signal = AbortSignal.timeout(timeoutMs);
+      let lastError;
+      for (let attemptNumber = 1; attemptNumber <= 2; attemptNumber += 1) {
+        try {
+          return await attempt(text, signal);
+        } catch (error) {
+          lastError = error;
+          log(`AI clean-up attempt ${attemptNumber} failed (${error.code}): ${error.detail}`);
+          if (!RETRYABLE.has(error.code) || signal.aborted) break;
+        }
       }
-
-      let data;
-      try {
-        data = JSON.parse(response.text);
-      } catch {
-        throw new EnhanceError("INVALID_OUTPUT", "The AI service returned something that isn't JSON.");
-      }
-
-      const parsed = enhancementSchema.safeParse(data);
-      if (!parsed.success) {
-        throw new EnhanceError("INVALID_OUTPUT", "The AI service's answer didn't match the expected format.");
-      }
-      return { ...parsed.data, model };
+      throw lastError;
     },
   };
 }

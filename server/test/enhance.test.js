@@ -59,13 +59,13 @@ describe("Gemini enhancer", () => {
     ["a title over 60 characters", json({ ...GOOD, title: "x".repeat(61) })],
     ["more than 5 tags", json({ ...GOOD, tags: ["a", "b", "c", "d", "e", "f"] })],
   ])("rejects %s", async (_label, reply) => {
-    const enhancer = createGeminiEnhancer({ model: "m", client: fakeClient(reply) });
+    const enhancer = createGeminiEnhancer({ model: "m", client: fakeClient(reply), log: () => {} });
     await expect(enhancer.enhance("text")).rejects.toMatchObject({ code: "INVALID_OUTPUT" });
   });
 
   it("maps Gemini's 429 to QUOTA and other API errors to UPSTREAM", async () => {
-    const quota = createGeminiEnhancer({ model: "m", client: fakeClient(() => { throw Object.assign(new Error("quota"), { status: 429 }); }) });
-    const broken = createGeminiEnhancer({ model: "m", client: fakeClient(() => { throw Object.assign(new Error("boom"), { status: 500 }); }) });
+    const quota = createGeminiEnhancer({ model: "m", log: () => {}, client: fakeClient(() => { throw Object.assign(new Error("quota"), { status: 429 }); }) });
+    const broken = createGeminiEnhancer({ model: "m", log: () => {}, client: fakeClient(() => { throw Object.assign(new Error("boom"), { status: 500 }); }) });
 
     await expect(quota.enhance("t")).rejects.toMatchObject({ code: "QUOTA" });
     await expect(broken.enhance("t")).rejects.toMatchObject({ code: "UPSTREAM" });
@@ -76,9 +76,71 @@ describe("Gemini enhancer", () => {
       ({ config }) =>
         new Promise((_resolve, reject) => config.abortSignal.addEventListener("abort", () => reject(config.abortSignal.reason))),
     );
-    const enhancer = createGeminiEnhancer({ model: "m", client: hangs, timeoutMs: 20 });
+    const enhancer = createGeminiEnhancer({ model: "m", client: hangs, timeoutMs: 20, log: () => {} });
 
     await expect(enhancer.enhance("t")).rejects.toMatchObject({ code: "TIMEOUT" });
+  });
+});
+
+describe("Gemini enhancer: retries and logging", () => {
+  const overloaded = () => Object.assign(new Error("The model is overloaded. Please try again later."), { status: 503 });
+
+  function flaky(...replies) {
+    let call = 0;
+    return fakeClient((request) => replies[Math.min(call++, replies.length - 1)](request));
+  }
+
+  it("retries once after a transient Gemini error and succeeds", async () => {
+    const log = vi.fn();
+    const client = flaky(() => { throw overloaded(); }, json(GOOD));
+    const enhancer = createGeminiEnhancer({ model: "m", client, log });
+
+    await expect(enhancer.enhance("text")).resolves.toMatchObject({ title: GOOD.title });
+    expect(client.models.generateContent).toHaveBeenCalledTimes(2);
+    expect(log).toHaveBeenCalledTimes(1);
+    expect(log.mock.calls[0][0]).toMatch(/attempt 1 failed \(UPSTREAM\).*503.*overloaded/);
+  });
+
+  it("retries once after an answer that fails validation", async () => {
+    const client = flaky(json({ ...GOOD, title: "x".repeat(80) }), json(GOOD));
+    const log = vi.fn();
+    const enhancer = createGeminiEnhancer({ model: "m", client, log });
+
+    await expect(enhancer.enhance("text")).resolves.toMatchObject({ title: GOOD.title });
+    expect(log.mock.calls[0][0]).toMatch(/INVALID_OUTPUT.*title/);
+  });
+
+  it("gives up after the second failure and logs both attempts", async () => {
+    const log = vi.fn();
+    const client = flaky(() => { throw overloaded(); });
+    const enhancer = createGeminiEnhancer({ model: "m", client, log });
+
+    await expect(enhancer.enhance("text")).rejects.toMatchObject({ code: "UPSTREAM" });
+    expect(client.models.generateContent).toHaveBeenCalledTimes(2);
+    expect(log).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not retry quota errors or timeouts", async () => {
+    const quotaClient = flaky(() => { throw Object.assign(new Error("quota"), { status: 429 }); });
+    await expect(createGeminiEnhancer({ model: "m", client: quotaClient, log: vi.fn() }).enhance("t")).rejects.toMatchObject({ code: "QUOTA" });
+    expect(quotaClient.models.generateContent).toHaveBeenCalledTimes(1);
+
+    const hangs = fakeClient(
+      ({ config }) => new Promise((_resolve, reject) => config.abortSignal.addEventListener("abort", () => reject(config.abortSignal.reason))),
+    );
+    await expect(createGeminiEnhancer({ model: "m", client: hangs, timeoutMs: 20, log: vi.fn() }).enhance("t")).rejects.toMatchObject({ code: "TIMEOUT" });
+    expect(hangs.models.generateContent).toHaveBeenCalledTimes(1);
+  });
+
+  it("never logs the transcript or the API key", async () => {
+    const log = vi.fn();
+    const client = flaky(() => { throw overloaded(); });
+    const enhancer = createGeminiEnhancer({ apiKey: "secret-key", model: "m", client, log });
+
+    await enhancer.enhance("my private note about the bank").catch(() => {});
+    const logged = log.mock.calls.flat().join("\n");
+    expect(logged).not.toContain("private note");
+    expect(logged).not.toContain("secret-key");
   });
 });
 
@@ -144,7 +206,7 @@ describe("AI API routes", () => {
   });
 
   it("turns invalid model output into a 502 with a safe message", async () => {
-    const enhancer = createGeminiEnhancer({ model: "m", client: fakeClient(() => ({ text: "nope" })) });
+    const enhancer = createGeminiEnhancer({ model: "m", client: fakeClient(() => ({ text: "nope" })), log: () => {} });
     server = await startTestServer({ enhancer });
 
     const res = await post({ text: "hello" });
