@@ -32,8 +32,16 @@ vi.mock("../src/audio/useRecorder", () => ({
   },
 }));
 
+// GET /api/config answers; tests can change it before rendering.
+let serverConfig;
+
 beforeEach(() => {
   localStorage.clear();
+  serverConfig = { aiEnabled: false, maxSessionSeconds: 60 };
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => ({ ok: true, status: 200, json: async () => serverConfig })),
+  );
   fakes.socket = { startStream: vi.fn(), sendAudio: vi.fn(), stopStream: vi.fn() };
   fakes.recorder = { start: vi.fn(async () => 16000), stop: vi.fn() };
 });
@@ -41,6 +49,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 // The app's notes store is created once per module load; load a fresh App for each test.
@@ -293,3 +302,33 @@ describe("persistence", () => {
     expect(screen.getByRole("list", { name: "Notes" })).toHaveTextContent("Remember the keys");
   });
 });
+
+describe("AI clean-up availability", () => {
+  it("hides Enhance with AI when the server has AI disabled", async () => {
+    const user = userEvent.setup();
+    seedNote();
+    await renderApp();
+    await user.click(screen.getByRole("button", { name: /Groceries/ }));
+
+    await waitFor(() => expect(fetch).toHaveBeenCalled());
+    expect(screen.queryByRole("button", { name: "Enhance with AI" })).toBeNull();
+  });
+
+  it("shows Enhance with AI when the server has AI enabled", async () => {
+    const user = userEvent.setup();
+    serverConfig = { aiEnabled: true, maxSessionSeconds: 60 };
+    seedNote();
+    await renderApp();
+    await user.click(screen.getByRole("button", { name: /Groceries/ }));
+
+    expect(await screen.findByRole("button", { name: "Enhance with AI" })).toBeInTheDocument();
+  });
+
+  it("uses the server's session limit for the timer", async () => {
+    serverConfig = { aiEnabled: false, maxSessionSeconds: 45 };
+    await renderApp();
+
+    await waitFor(() => expect(screen.getByText(/of 0:45/)).toBeInTheDocument());
+  });
+});
+

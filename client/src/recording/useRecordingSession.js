@@ -4,7 +4,7 @@ import { useTranscriptionSocket } from "../net/useTranscriptionSocket";
 import { initialTranscript, joinText, transcriptReducer } from "../transcript/transcriptReducer";
 import { errorMessage } from "./messages";
 
-export const MAX_SESSION_SECONDS = 60;
+export const DEFAULT_MAX_SECONDS = 60;
 // The server waits up to 5 s for Deepgram's last results; give up a little after that.
 const FINISH_TIMEOUT_MS = 8000;
 
@@ -15,7 +15,7 @@ const FINISH_TIMEOUT_MS = 8000;
  * the last words after Stop) → "idle". When a recording ends, onComplete({ text, durationSec })
  * is called once, if anything was transcribed.
  */
-export function useRecordingSession({ onComplete }) {
+export function useRecordingSession({ onComplete, maxSeconds = DEFAULT_MAX_SECONDS }) {
   const [phase, setPhaseState] = useState("idle");
   const [transcript, setTranscript] = useState(initialTranscript);
   const [elapsed, setElapsed] = useState(0);
@@ -29,6 +29,8 @@ export function useRecordingSession({ onComplete }) {
   const finishTimer = useRef(null);
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
+  const maxSecondsRef = useRef(maxSeconds);
+  maxSecondsRef.current = maxSeconds;
   const recorderRef = useRef(null);
 
   const setPhase = useCallback((next) => {
@@ -65,7 +67,7 @@ export function useRecordingSession({ onComplete }) {
     onPartial: (text) => applyTranscript({ type: "PARTIAL", text }),
     onFinal: (text) => applyTranscript({ type: "FINAL", text }),
     onEnded: ({ reason } = {}) => {
-      if (reason === "time-limit") setNotice(`Recording stopped at the ${MAX_SESSION_SECONDS}-second limit.`);
+      if (reason === "time-limit") setNotice(`Recording stopped at the ${maxSecondsRef.current}-second limit.`);
       complete();
     },
     onError: ({ code, message } = {}) => {
@@ -133,7 +135,7 @@ export function useRecordingSession({ onComplete }) {
       if (!streamStartedAt.current) return;
       const seconds = (Date.now() - streamStartedAt.current) / 1000;
       setElapsed(seconds);
-      if (seconds >= MAX_SESSION_SECONDS + 3) stopRef.current();
+      if (seconds >= maxSecondsRef.current + 3) stopRef.current();
     }, 250);
     return () => clearInterval(interval);
   }, [phase]);
@@ -156,7 +158,7 @@ export function useRecordingSession({ onComplete }) {
     error: error ?? recorder.error?.message ?? null,
     notice,
     connection: socket.status,
-    maxSeconds: MAX_SESSION_SECONDS,
+    maxSeconds,
     start,
     stop,
     toggle,

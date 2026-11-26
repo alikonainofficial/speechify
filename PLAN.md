@@ -39,7 +39,7 @@
 - [x] 4.3 New UI: recorder and notes
 - [x] 4.4 Client tests for the main flows
 - [x] 5.1 Server: `POST /api/notes/enhance` with Gemini
-- [ ] 5.2 Client: "Enhance with AI" on a note
+- [x] 5.2 Client: "Enhance with AI" on a note
 - [ ] 6.1 CI that can fail (replaces the old workflow)
 - [ ] 7.1 Production server: `/health`, config, Render blueprint
 - [ ] 7.2 Client deploy to GitHub Pages and wake-up UX
@@ -374,4 +374,5 @@ _Add an entry whenever reality differs from this plan: date, step, what changed,
   - **Errors.** All JSON `{ error: { code, message } }`: `AI_DISABLED` 503, `INVALID_TEXT` 400, `RATE_LIMITED` 429, `AI_BUSY` 503 (Gemini 429), `AI_FAILED` 502 (timeout, other API error, invalid output). Malformed JSON bodies get a JSON 400.
   - **Limits.** The per-IP limit is a sliding window, configurable with `ENHANCE_PER_HOUR` (default 10) and counted only for valid requests. The JSON body limit is 64 KB.
   - **Not yet checked against real Gemini.** That happens in 7.3, once the owner has a key.
+- **2026-11-26 · 5.2:** `note.ai` also stores `originalTitle` and `originalText` (from when Enhance was clicked); that is what makes "Use AI title" and "Replace text…" undoable via "Restore original…" buttons. Original and cleaned text are compared with a two-button toggle (works on mobile) rather than side by side. `/api/config` also drives the recorder's time limit (`maxSessionSeconds`), so the ring matches the server. The server URL moved to `src/net/serverUrl.js`, shared by the socket and the new `src/net/api.js`. `NoteView` syncs its title and text inputs when the AI panel changes the note. Checked in headless Chrome with a fake enhancer: loading state, result, apply, undo, and persistence across reload, with no console errors.
 

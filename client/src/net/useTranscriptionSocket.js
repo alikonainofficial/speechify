@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 
-export const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:8080";
+import { SERVER_URL } from "./serverUrl";
+
+export { SERVER_URL };
 
 // One socket for the whole app, created on first use (not per render or per component).
 let socket = null;

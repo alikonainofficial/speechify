@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import NotesList from "./components/NotesList";
 import NoteView from "./components/NoteView";
+import AiPanel from "./components/AiPanel";
 import Recorder from "./components/Recorder";
+import { useServerConfig } from "./net/useServerConfig";
 import { useNotes } from "./notes/useNotes";
 import { useRecordingSession } from "./recording/useRecordingSession";
 
@@ -13,11 +15,13 @@ function isTypingTarget(target) {
 
 function App() {
   const notes = useNotes();
+  const serverConfig = useServerConfig();
   const [selectedId, setSelectedId] = useState(null);
   const [query, setQuery] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const session = useRecordingSession({
+    maxSeconds: serverConfig.maxSessionSeconds,
     onComplete: ({ text, durationSec }) => {
       const note = notes.create({ text, durationSec });
       if (note) setSelectedId(note.id);
@@ -99,6 +103,7 @@ function App() {
               setSelectedId(null);
             }}
             exportMarkdown={notes.exportMarkdown}
+            aiPanel={serverConfig.aiEnabled ? <AiPanel note={selected} onUpdate={notes.update} /> : null}
           />
         )}
         {!recording && !selected && notes.notes.length > 0 && (

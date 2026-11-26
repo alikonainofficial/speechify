@@ -33,6 +33,10 @@ export default function NoteView({ note, onUpdate, onDelete, exportMarkdown, aiP
   const [title, setTitle] = useState(note.title);
   const [text, setText] = useState(note.text);
   const [saved, flashSaved] = useFlash();
+
+  // The AI panel can change the title or text; show those changes in the inputs.
+  useEffect(() => setTitle(note.title), [note.title]);
+  useEffect(() => setText(note.text), [note.text]);
   const [copied, flashCopied] = useFlash();
 
   const save = () => {
