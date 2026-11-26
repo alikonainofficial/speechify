@@ -40,7 +40,7 @@
 - [x] 4.4 Client tests for the main flows
 - [x] 5.1 Server: `POST /api/notes/enhance` with Gemini
 - [x] 5.2 Client: "Enhance with AI" on a note
-- [ ] 6.1 CI that can fail (replaces the old workflow)
+- [x] 6.1 CI that can fail (replaces the old workflow)
 - [ ] 7.1 Production server: `/health`, config, Render blueprint
 - [ ] 7.2 Client deploy to GitHub Pages and wake-up UX
 - [ ] 7.3 🧑 MANUAL: create accounts, deploy, verify
@@ -375,4 +375,5 @@ _Add an entry whenever reality differs from this plan: date, step, what changed,
   - **Limits.** The per-IP limit is a sliding window, configurable with `ENHANCE_PER_HOUR` (default 10) and counted only for valid requests. The JSON body limit is 64 KB.
   - **Not yet checked against real Gemini.** That happens in 7.3, once the owner has a key.
 - **2026-11-26 · 5.2:** `note.ai` also stores `originalTitle` and `originalText` (from when Enhance was clicked); that is what makes "Use AI title" and "Replace text…" undoable via "Restore original…" buttons. Original and cleaned text are compared with a two-button toggle (works on mobile) rather than side by side. `/api/config` also drives the recorder's time limit (`maxSessionSeconds`), so the ring matches the server. The server URL moved to `src/net/serverUrl.js`, shared by the socket and the new `src/net/api.js`. `NoteView` syncs its title and text inputs when the AI panel changes the note. Checked in headless Chrome with a fake enhancer: loading state, result, apply, undo, and persistence across reload, with no console errors.
+- **2026-11-26 · 6.1:** Uses `actions/checkout@v7` and `actions/setup-node@v7`, the current majors per their release pages (Nov 2026), with no breaking changes relevant here. Node comes from `.nvmrc` (20), with an npm cache per lockfile. It's one job with a `client`/`server` matrix and `fail-fast: false`, so one package failing doesn't hide the other's result. The token is read-only (`permissions: contents: read`). The old `mikepenz/action-junit-report` step went with the old workflow. Also removed: the client's pinned `@rollup/rollup-linux-x64-gnu@4.9.5` optional dependency, a take-home workaround that npm no longer needs. Red check: right after this commit, a deliberately failing test is pushed and then reverted; see the next two commits and the run log in the 7.1 entry. **Note for the owner:** Node 20 reached end-of-life in April 2026. The plan pins it (rule 7), so it stays; moving `.nvmrc` to 22 or 24 later is a one-line change.
 
