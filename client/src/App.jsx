@@ -1,19 +1,17 @@
-import { useState } from "react";
+import { useReducer, useState } from "react";
 import { useRecorder } from "./audio/useRecorder";
 import { useTranscriptionSocket } from "./net/useTranscriptionSocket";
+import { initialTranscript, transcriptReducer } from "./transcript/transcriptReducer";
+import LiveTranscript from "./transcript/LiveTranscript";
 
 // Temporary UI: replaced by the recorder and notes UI in step 4.3.
 function App() {
-  const [transcription, setTranscription] = useState("");
-  const [partialTranscription, setPartialTranscription] = useState("");
+  const [transcript, dispatch] = useReducer(transcriptReducer, initialTranscript);
   const [streamError, setStreamError] = useState(null);
 
   const { status, startStream, sendAudio, stopStream } = useTranscriptionSocket({
-    onPartial: (text) => setPartialTranscription(text),
-    onFinal: (text) => {
-      setTranscription((prev) => prev + text + " ");
-      setPartialTranscription("");
-    },
+    onPartial: (text) => dispatch({ type: "PARTIAL", text }),
+    onFinal: (text) => dispatch({ type: "FINAL", text }),
     onEnded: () => stopRecording(),
     onError: (error) => setStreamError(error.message),
   });
@@ -34,12 +32,11 @@ function App() {
   };
 
   const onCopyTranscription = () => {
-    navigator.clipboard.writeText(transcription);
+    navigator.clipboard.writeText(transcript.committed);
   };
 
   const onClearTranscription = () => {
-    setTranscription("");
-    setPartialTranscription("");
+    dispatch({ type: "CLEAR" });
   };
 
   return (
@@ -47,13 +44,17 @@ function App() {
       <p>Server: {status}</p>
       {recorderError && <p role="alert">{recorderError.message}</p>}
       {streamError && <p role="alert">{streamError}</p>}
-      <textarea
-        style={{ display: "block" }}
-        value={transcription + partialTranscription}
-        onChange={(e) => setTranscription(e.target.value)}
-        rows="10"
-        cols="50"
-      />
+      {isRecording ? (
+        <LiveTranscript committed={transcript.committed} partial={transcript.partial} />
+      ) : (
+        <textarea
+          style={{ display: "block" }}
+          value={transcript.committed}
+          onChange={(e) => dispatch({ type: "EDIT", text: e.target.value })}
+          rows="10"
+          cols="50"
+        />
+      )}
       <button onClick={onStartRecordingPress} disabled={isRecording || status !== "connected"}>
         Start Recording
       </button>
