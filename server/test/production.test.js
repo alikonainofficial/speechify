@@ -40,6 +40,13 @@ describe("HTTP basics", () => {
     expect(await res.json()).toEqual({ status: "ok", uptime: 42 });
   });
 
+  it("GET /health sends CORS headers, so the browser app on another origin can read it", async () => {
+    server = await startTestServer({ env: { ALLOWED_ORIGINS: "https://alikonainofficial.github.io" } });
+
+    const res = await fetch(`${server.url}/health`, { headers: { origin: "https://alikonainofficial.github.io" } });
+    expect(res.headers.get("access-control-allow-origin")).toBe("https://alikonainofficial.github.io");
+  });
+
   it("answers unknown paths with a JSON 404 (no static files or SPA fallback)", async () => {
     server = await startTestServer();
 

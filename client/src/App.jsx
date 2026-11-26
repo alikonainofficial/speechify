@@ -4,6 +4,7 @@ import NoteView from "./components/NoteView";
 import AiPanel from "./components/AiPanel";
 import Recorder from "./components/Recorder";
 import { useServerConfig } from "./net/useServerConfig";
+import { useServerHealth } from "./net/useServerHealth";
 import { useNotes } from "./notes/useNotes";
 import { useRecordingSession } from "./recording/useRecordingSession";
 
@@ -15,7 +16,8 @@ function isTypingTarget(target) {
 
 function App() {
   const notes = useNotes();
-  const serverConfig = useServerConfig();
+  const health = useServerHealth();
+  const serverConfig = useServerConfig({ ready: health.healthy });
   const [selectedId, setSelectedId] = useState(null);
   const [query, setQuery] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -32,11 +34,12 @@ function App() {
     const onKeyDown = (event) => {
       if (event.code !== "Space" || event.repeat || isTypingTarget(event.target)) return;
       event.preventDefault();
+      if (session.phase === "idle" && !health.healthy) return; // can't start until the server is up
       session.toggle();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [session]);
+  }, [session, health.healthy]);
 
   const selectNote = (id) => {
     setSelectedId(id);
@@ -80,7 +83,12 @@ function App() {
       </aside>
 
       <main className="flex flex-col gap-8 px-5 py-8 md:px-12 md:py-12">
-        <Recorder session={session} showTranscript={recording} />
+        {health.waking && (
+          <p role="status" className="max-w-prose rounded-lg border border-accent/40 bg-accent/10 px-4 py-3">
+            Waking up the free server (up to a minute)… Recording starts working as soon as it answers.
+          </p>
+        )}
+        <Recorder session={session} showTranscript={recording} serverReady={health.healthy} />
 
         {problems.map((message) => (
           <p key={message} role="alert" className="max-w-prose rounded-lg border border-danger/40 px-4 py-3 text-danger">
@@ -109,6 +117,10 @@ function App() {
         {!recording && !selected && notes.notes.length > 0 && (
           <p className="max-w-prose text-muted">Pick a note from the list, or record a new one.</p>
         )}
+
+        <footer className="mt-auto max-w-prose border-t border-line pt-4 text-sm text-muted">
+          Free demo: recordings are limited to {serverConfig.maxSessionSeconds} s and a few minutes per day. Notes stay in your browser.
+        </footer>
       </main>
     </div>
   );

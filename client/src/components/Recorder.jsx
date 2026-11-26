@@ -15,11 +15,11 @@ const RING_LENGTH = 2 * Math.PI * RING_RADIUS;
  * The record button: a disc whose ring fills as the session limit runs out.
  * Props: session (from useRecordingSession), showTranscript.
  */
-export default function Recorder({ session, showTranscript }) {
+export default function Recorder({ session, showTranscript, serverReady = true }) {
   const { phase, elapsed, maxSeconds, level, connection, toggle, transcript } = session;
   const active = phase === "connecting" || phase === "listening";
   const finishing = phase === "finishing";
-  const canStart = phase === "idle" && connection === "connected";
+  const canStart = phase === "idle" && connection === "connected" && serverReady;
   const progress = Math.min(1, elapsed / maxSeconds);
 
   return (
@@ -67,7 +67,7 @@ export default function Recorder({ session, showTranscript }) {
 
         <div className="flex min-w-0 flex-col gap-2">
           <p className="text-lg font-semibold" data-testid="recorder-state" aria-live="polite">
-            {connection === "connected" || phase !== "idle" ? PHASE_LABEL[phase] : "Connecting to the server…"}
+            {phase !== "idle" ? PHASE_LABEL[phase] : canStart ? PHASE_LABEL.idle : "Connecting to the server…"}
           </p>
           <p className="tabular-nums text-muted">
             <span className="text-3xl font-light text-ink" data-testid="timer">

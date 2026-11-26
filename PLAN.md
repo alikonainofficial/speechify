@@ -42,7 +42,7 @@
 - [x] 5.2 Client: "Enhance with AI" on a note
 - [x] 6.1 CI that can fail (replaces the old workflow)
 - [x] 7.1 Production server: `/health`, config, Render blueprint
-- [ ] 7.2 Client deploy to GitHub Pages and wake-up UX
+- [x] 7.2 Client deploy to GitHub Pages and wake-up UX
 - [ ] 7.3 🧑 MANUAL: create accounts, deploy, verify
 - [ ] 8.1 README, LICENSE and demo GIF placeholder
 - [ ] 8.2 🧑 MANUAL: rename the repo and update links
@@ -382,4 +382,11 @@ _Add an entry whenever reality differs from this plan: date, step, what changed,
   - **Health:** `/health` uptime comes from the injected clock.
   - **Unknown paths** now get a JSON 404, replacing the static/SPA fallback.
   - **Shutdown:** `createServer` returns `shutdown({ timeoutMs })`. It refuses new sockets, calls `finish()` on active streams (clients get `stream-ended { reason: "server-shutdown" }`, and the client saves the note as usual), waits at most 5 s, then closes Socket.IO and HTTP. `index.js` wires it to SIGTERM and SIGINT and exits with code 1 and a clear message when production settings are missing. Checked by hand: a missing-settings start exits 1, and SIGTERM exits cleanly in about 1.5 s.
+- **2026-11-26 · 7.2:**
+  - **Pages workflow:** uses `actions/upload-pages-artifact@v5` and `actions/deploy-pages@v5` (current majors, Nov 2026). The build fails with a clear error if the `VITE_SERVER_URL` repository variable is missing, so a client pointing at localhost is never deployed. `concurrency: pages` lets a running deploy finish instead of cancelling it.
+  - **Waking up:** the banner appears after a failed `/health` check, or once 1.5 s pass without an answer, so an awake server doesn't flash it.
+  - **Bug found in 7.1 and fixed here:** `/health` was registered before the CORS middleware, so browsers on the Pages origin couldn't read it and the banner would never clear. Unit tests mock `fetch`, so a sub-path build in headless Chrome caught it; a server test now covers CORS on `/health`.
+  - **Config after wake-up:** `/api/config` is fetched only once `/health` succeeds, so a cold start no longer hides the AI button for the whole visit.
+  - **Space shortcut** is also blocked until the server is up.
+  - **Checked** with a `VITE_BASE=/speechify/` build: favicon, JS, CSS and the worklet all resolve under the base path.
 

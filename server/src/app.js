@@ -54,12 +54,13 @@ export function createServer({ config, createTranscriber, enhancer = null, now =
     }),
   );
 
+  app.use(cors({ origin: config.allowedOrigins }));
+
   // Cheap and dependency-free, so it answers quickly when the free server wakes up.
+  // (After CORS: the browser app calls it from another origin.)
   app.get("/health", (req, res) => {
     res.json({ status: "ok", uptime: Math.round((now() - startedAt) / 1000) });
   });
-
-  app.use(cors({ origin: config.allowedOrigins }));
   app.use(express.json({ limit: "64kb" }));
   app.use("/api", createApiRouter({ config, enhancer, now }));
 

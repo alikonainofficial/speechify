@@ -56,7 +56,10 @@ afterEach(() => {
 async function renderApp() {
   vi.resetModules();
   const { default: App } = await import("../src/App.jsx");
-  return render(<App />);
+  const view = render(<App />);
+  // Like a user: wait until the health check passes and Record is enabled.
+  await waitFor(() => expect(screen.getByTestId("recorder-state")).toHaveTextContent("Ready"));
+  return view;
 }
 
 const toggle = () => screen.getByTestId("record-toggle");
@@ -329,6 +332,43 @@ describe("AI clean-up availability", () => {
     await renderApp();
 
     await waitFor(() => expect(screen.getByText(/of 0:45/)).toBeInTheDocument());
+  });
+});
+
+describe("waking up the free server", () => {
+  it("shows the banner, keeps Record disabled until /health answers, then loads the config", async () => {
+    let wake;
+    const awake = new Promise((resolve) => (wake = resolve));
+    fetch.mockImplementation(async (url) => {
+      if (String(url).endsWith("/health")) {
+        await awake;
+        return { ok: true, status: 200, json: async () => ({ status: "ok" }) };
+      }
+      return { ok: true, status: 200, json: async () => ({ aiEnabled: true, maxSessionSeconds: 60 }) };
+    });
+
+    vi.resetModules();
+    const { default: App } = await import("../src/App.jsx");
+    render(<App />);
+
+    expect(await screen.findByText(/Waking up the free server/, {}, { timeout: 3000 })).toBeInTheDocument();
+    expect(toggle()).toBeDisabled();
+    fireEvent.keyDown(document.body, { code: "Space" });
+    expect(fakes.recorder.start).not.toHaveBeenCalled();
+    expect(fetch.mock.calls.some(([url]) => String(url).endsWith("/api/config"))).toBe(false);
+
+    wake();
+
+    await waitFor(() => expect(screen.queryByText(/Waking up the free server/)).toBeNull());
+    expect(toggle()).toBeEnabled();
+    expect(state()).toBe("Ready");
+    await waitFor(() => expect(fetch.mock.calls.some(([url]) => String(url).endsWith("/api/config"))).toBe(true));
+  });
+
+  it("shows the demo limits in the footer", async () => {
+    await renderApp();
+    expect(screen.getByText(/recordings are limited to 60 s/)).toBeInTheDocument();
+    expect(screen.getByText(/Notes stay in your browser/)).toBeInTheDocument();
   });
 });
 
