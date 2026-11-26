@@ -11,9 +11,13 @@
  * - transcriber-ready                 The stream is open; audio sent earlier is not lost.
  * - partial (string)                  Interim text for the current phrase.
  * - final (string)                    Final text for a phrase.
- * - stream-ended { reason }           The stream is over: "stopped" | "closed".
- * - stream-error { code, message }    Codes: INVALID_CONFIG, TRANSCRIBER_ERROR.
+ * - stream-ended { reason }           The stream is over: "stopped" | "time-limit" | "closed".
+ * - stream-error { code, message }    Codes: INVALID_CONFIG, BUSY, DAILY_LIMIT, TRANSCRIBER_ERROR.
+ *
+ * Limits (see limits.js): a stream is auto-stopped after config.maxSessionSeconds,
+ * or sooner if the IP's daily budget runs out.
  */
+import { LIMIT_MESSAGES } from "../limits.js";
 
 export const MIN_SAMPLE_RATE = 8000;
 export const MAX_SAMPLE_RATE = 48000;
@@ -26,7 +30,7 @@ function readSampleRate(payload) {
   return sampleRate;
 }
 
-export function handleConnection(socket, { createTranscriber }) {
+export function handleConnection(socket, { createTranscriber, config, limits, clientIp }) {
   // The active stream, or null. `stopping` is true between stop-stream and stream-ended.
   let active = null;
 
@@ -34,17 +38,37 @@ export function handleConnection(socket, { createTranscriber }) {
     socket.emit("stream-error", { code, message });
   }
 
-  // Stop forwarding a transcriber's events (it may still emit while shutting down).
+  // Stop forwarding a transcriber's events (it may still emit while shutting down)
+  // and give its slot and remaining time back to the limits.
   function detach(stream) {
+    clearTimeout(stream.timeLimit);
+    stream.lease.release();
     stream.transcriber.removeAllListeners();
     stream.transcriber.on("error", () => {}); // an unhandled "error" event would crash the process
     if (active === stream) active = null;
   }
 
-  function start(sampleRate) {
+  // Finishes the stream: late finals are still forwarded, then stream-ended is sent.
+  async function stop(stream, reason) {
+    if (stream.stopping) return;
+    stream.stopping = true;
+    clearTimeout(stream.timeLimit);
+
+    await stream.transcriber.finish();
+
+    // A new configure-stream may have replaced this stream while it was finishing.
+    if (active !== stream) return;
+    detach(stream);
+    socket.emit("stream-ended", { reason });
+  }
+
+  function start(sampleRate, lease) {
     const transcriber = createTranscriber({ sampleRate });
-    const stream = { transcriber, stopping: false };
+    const stream = { transcriber, lease, stopping: false, timeLimit: null };
     active = stream;
+
+    const seconds = Math.min(config.maxSessionSeconds, lease.secondsAllowed);
+    stream.timeLimit = setTimeout(() => stop(stream, "time-limit"), seconds * 1000);
 
     transcriber.on("ready", () => socket.emit("transcriber-ready"));
     transcriber.on("partial", (text) => socket.emit("partial", text));
@@ -72,24 +96,21 @@ export function handleConnection(socket, { createTranscriber }) {
       detach(previous);
       previous.transcriber.close();
     }
-    start(sampleRate);
+
+    const result = limits.acquire(clientIp);
+    if (!result.ok) {
+      sendError(result.code, LIMIT_MESSAGES[result.code]);
+      return;
+    }
+    start(sampleRate, result.lease);
   });
 
   socket.on("incoming-audio", (chunk) => {
     if (active && !active.stopping) active.transcriber.send(chunk);
   });
 
-  socket.on("stop-stream", async () => {
-    const stream = active;
-    if (!stream || stream.stopping) return;
-    stream.stopping = true;
-
-    await stream.transcriber.finish();
-
-    // A new configure-stream may have replaced this stream while it was finishing.
-    if (active !== stream) return;
-    detach(stream);
-    socket.emit("stream-ended", { reason: "stopped" });
+  socket.on("stop-stream", () => {
+    if (active) stop(active, "stopped");
   });
 
   socket.on("disconnect", () => {
