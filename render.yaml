@@ -19,7 +19,7 @@ services:
         value: production
       # Render reads .nvmrc only from the repo root; pin it here so it can't drift.
       - key: NODE_VERSION
-        value: "20"
+        value: "22"
       # Render's proxy sets X-Forwarded-For; trust it for per-IP limits.
       - key: TRUST_PROXY
         value: "1"

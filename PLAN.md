@@ -389,4 +389,5 @@ _Add an entry whenever reality differs from this plan: date, step, what changed,
   - **Config after wake-up:** `/api/config` is fetched only once `/health` succeeds, so a cold start no longer hides the AI button for the whole visit.
   - **Space shortcut** is also blocked until the server is up.
   - **Checked** with a `VITE_BASE=/speechify/` build: favicon, JS, CSS and the worklet all resolve under the base path.
+- **2026-11-26 · Node 22 (owner-approved change to rule 7):** Node 20 reached end-of-life in April 2026, so the owner approved moving to Node 22 (an LTS line) before the first deploy. `.nvmrc` → `22` (used by CI and the Pages build) and `NODE_VERSION` → `"22"` in `render.yaml`. No code changes were needed; local checks were already running on Node 22.
 
