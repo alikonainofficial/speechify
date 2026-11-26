@@ -35,7 +35,7 @@
 - [x] 3.1 Audio capture: AudioWorklet, 16 kHz PCM, release the mic
 - [x] 3.2 Configurable server URL and connection status
 - [x] 4.1 Transcript state reducer (fixes duplicated words)
-- [ ] 4.2 Notes store in localStorage
+- [x] 4.2 Notes store in localStorage
 - [ ] 4.3 New UI: recorder and notes
 - [ ] 4.4 Client tests for the main flows
 - [ ] 5.1 Server: `POST /api/notes/enhance` with Gemini
@@ -364,4 +364,5 @@ _Add an entry whenever reality differs from this plan: date, step, what changed,
 - **2026-11-26 · 3.2:** The hook is `useTranscriptionSocket(handlers)`, with handlers `{ onReady, onPartial, onFinal, onEnded, onError }`. The socket is a module singleton (`getSocket()`). `connect_error` sets the status to `disconnected`, and Socket.IO's `reconnect_attempt` sets it back to `connecting`. `sendAudio` drops audio while offline instead of letting Socket.IO buffer it and replay stale audio later. The temporary `App.jsx` now shows the connection status, shows `stream-error` messages, disables Start until connected, and stops the recorder on `stream-ended` (for example after the time limit). The duplicated-words bug (V9) remains until 4.1.
 - **2026-11-26 · 3.1 manual check:** The owner ran both dev servers on macOS and recorded in Chrome. Live text appeared, and the tab's mic indicator turned off after Stop. ✅
 - **2026-11-26 · 4.1:** `editing` is set by `EDIT` (hand edits). While it's true, partials are ignored but finals are still appended, so no words are lost. `LOAD` and `CLEAR` reset it. `joinText()` handles spacing and leading punctuation. The temporary `App.jsx` now uses the reducer: a read-only `LiveTranscript` (`aria-live="polite"`, partial in grey italics) while recording, and an editable textarea only after Stop. ESLint's `react/prop-types` rule was turned off (no PropTypes dependency; React 19 removes them); props are documented in comments.
+- **2026-11-26 · 4.2:** The store is a factory, `createNotesStore({ storage, now, newId })`, with a lazily created app instance (`getNotesStore()`), so tests use an in-memory storage that can fail on demand. Writes save first and only then update the in-memory list, so a failed save never shows a note that wasn't stored. A corrupt value is copied to `voice-notes:v1:corrupt`; if that already exists, it goes to `…:corrupt:<timestamp>`, so an earlier backup is never overwritten. Unreadable storage (e.g. blocked in private mode) starts empty with a `loadError`. `useNotes()` uses `useSyncExternalStore`, so all components share one list, and it turns storage errors into an `error` message. `defaultTitle()` (first 7 words) lives in the store module and is used by 4.3.
 
